@@ -17,6 +17,8 @@ envelope.addEventListener("click", () => {
 
     setTimeout( () => {
         document.querySelector(".letter-window").classList.add("open");
+        // Play background music when the envelope is opened (user gesture)
+        try{ playMusic(); }catch(e){}
     },50);
 });
 
@@ -70,3 +72,70 @@ yesBtn.addEventListener("click", () => {
 
     finalText.style.display = "block";
 });
+
+// --- Background music (Spotify embed) ---
+const spotifyInput = document.getElementById('spotify-url');
+const savePlayBtn = document.getElementById('save-play');
+const playBtn = document.getElementById('play-btn');
+const stopBtn = document.getElementById('stop-btn');
+const message = document.getElementById('music-message');
+const playerWrap = document.getElementById('spotify-player-wrap');
+const iframe = document.getElementById('spotify-embed');
+
+function extractSpotifyId(url){
+    if(!url) return null;
+    const m = url.match(/track\/([A-Za-z0-9]+)(\?|$)/);
+    return m ? m[1] : null;
+}
+
+function makeEmbedUrl(id, autoplay = false){
+    if(!id) return '';
+    // Note: autoplay on Spotify embed may be blocked by browsers.
+    let u = `https://open.spotify.com/embed/track/${id}`;
+    if(autoplay) u += '?autoplay=1';
+    return u;
+}
+
+function saveSpotifyUrl(url){
+    try{ localStorage.setItem('spotifyUrl', url); }catch(e){}
+}
+
+function loadSaved(){
+    const url = localStorage.getItem('spotifyUrl');
+    if(url){
+        spotifyInput.value = url;
+        message.textContent = 'Saved track ready.';
+    } else if (spotifyInput && spotifyInput.value){
+        // If the input has a default value (from HTML), persist it so future visits remember it
+        try{
+            localStorage.setItem('spotifyUrl', spotifyInput.value);
+            message.textContent = 'Saved track ready.';
+        }catch(e){ }
+    }
+}
+
+function playMusic(){
+    const url = spotifyInput.value || localStorage.getItem('spotifyUrl');
+    if(!url){ message.textContent = 'Paste a Spotify track URL first.'; return; }
+    const id = extractSpotifyId(url);
+    if(!id){ message.textContent = 'Invalid Spotify track URL.'; return; }
+    iframe.src = makeEmbedUrl(id, true);
+    playerWrap.style.display = 'block';
+    saveSpotifyUrl(url);
+    message.textContent = 'Playing (autoplay may be blocked; click Play if needed).';
+}
+
+function stopMusic(){
+    iframe.src = '';
+    playerWrap.style.display = 'none';
+    message.textContent = 'Stopped.';
+}
+
+savePlayBtn.addEventListener('click', playMusic);
+playBtn.addEventListener('click', () => {
+    // This user click satisfies gesture requirement in most browsers
+    playMusic();
+});
+stopBtn.addEventListener('click', stopMusic);
+
+document.addEventListener('DOMContentLoaded', loadSaved);
